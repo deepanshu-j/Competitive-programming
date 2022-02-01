@@ -1,68 +1,4 @@
-
-// #include<bits/stdc++.h>
-
-// /**
-#include<iostream>
-#include <cctype>
-#include <cerrno>
-#include <cfloat>
-#include <ciso646>
-#include <climits>
-#include <clocale>
-#include <cmath>
-#include <csetjmp>
-#include <csignal>
-#include <cstdarg>
-#include <cstddef>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <ccomplex>
-#include <cfenv>
-#include <cinttypes>
-#include <cstdbool>
-#include <cstdint>
-#include <ctgmath>
-#include <cwchar>
-#include <cwctype>
-#include <algorithm>
-#include <bitset>
-#include <complex>
-#include <deque>
-#include <exception>
-#include <fstream>
-#include <functional>
-#include <iomanip>
-#include <ios>
-#include <iosfwd>
-#include <iostream>
-#include <istream>
-#include <iterator>
-#include <limits>
-#include <list>
-#include <locale>
-#include <map>
-#include <memory>
-#include <new>
-#include <numeric>
-#include <ostream>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <stack>
-#include <stdexcept>
-#include <streambuf>
-#include <string>
-#include <typeinfo>
-#include <utility>
-#include <valarray>
-#include <vector>
-#include <array>
-#include <unordered_map>
-#include <unordered_set>
-// */
-
+#include <bits/stdc++.h>
 using namespace std;
 #define fast_io {\
                 ios_base::sync_with_stdio(false);\
@@ -79,9 +15,7 @@ using namespace std;
 typedef long long ll;
 typedef pair<int,int> pii;
 typedef vector<int> vi;
-#define inf -1000000
  
-// unordered_map<string, int> memo;
 struct hash_pair {
     template <class T1, class T2>
     size_t operator()(const pair<T1, T2>& p) const
@@ -91,40 +25,95 @@ struct hash_pair {
         return hash1 ^ hash2;
     }
 };
+
 unordered_map<pair<int, int>, int, hash_pair> memo;
 vi res;
 vector<bool> vis;
 vector<vi> tree;
+vi depth; 
  
-int tot =0;
-int dfs(int node, int parent){ // the parent with whose respect we wanna calculate the ans 
-// basically in the direction of parent to this node side //
+void dfs(int node, int parent){ 
     
-    
-    if(vis[node]) return 0;// POE
+    if(vis[node]) return; // POE
     
     // cout<<"node: "<<node<<" , parent: "<<parent<<"\n";
     vis[node] = 1;
+
+    // precomputation // for prefix and suffix for rerooting //
     
-    // string key = to_string(node)+ " " + to_string(parent);
-    auto key = make_pair(node, parent);
+    vi child;
+    rep(i,0,tree[node].size())
+    if(!vis[ tree[node][i] ]) child.eb(tree[node][i]);
     
-    if(parent != -1 and memo.count(key) != 0)
-        return memo[key];
-    ++tot;
+    int sz = child.size();
+    
+    vi prefix(sz, 0), suffix(sz, 0);
+    int _pre = 0, _suff = 0;
+    
+    // Computing Prefix //
+    rep(i,0,sz){
+        _pre = max(_pre, depth[ child[i] ]);
+        prefix[i] = _pre;
+    }
+    // Computing Suffix //    
+    for(int i=sz-1; i>=0 ; --i){
+        _suff = max(_suff, depth[ child[i] ]);
+        suffix[i] = _suff; 
+    }
+    
+    // if(node ==4){
+    
+    //     cout<<"\nCHILD of node 4\n";
+    //     rep(i,0,sz) cout<<child[i]<<" ";
+        
+    //     cout<<"\nPREFIX\n";
+    //     rep(i,0,sz) cout<<prefix[i]<<" ";
+        
+    //     cout<<"\nSUFFIX\n";
+    //     rep(i,0,sz) cout<<suffix[i]<<" ";
+        
+    // }
+    
+    rep(i,0,sz){
+        int pre = (i>0) ? prefix[i-1] : 0 ; 
+        int suff = (i+1<sz) ? suffix[i+1] : 0;
+        memo[{ node, child[i] }] = 1 + max({ 0,
+            pre, // POE maybe INT_MIN  
+            suff,
+            (parent!=-1) ? ( memo[{parent, node}] ): 0 
+            });
+            
+        // cout<<"MEMO: node: "<<node<<" , child: "<<child[i]<<" , val: "<<memo[{ node, child[i]}]<<"\n";
+    }
     
     int ans = 0;
-    for(auto x: tree[node]){
-        if(!vis[x])
-        ans = max(ans, dfs(x, node) );// this is what we wanna store //
-    }
-    ++ans;
-    if(parent!=-1){
-        return memo[key] = ans;
-    }else return ans;
     
-    // vis[node] = 0;// POE
+    ans = max(ans, depth[node]);
+    
+    if(parent!=-1){
+        ans = max({ans, 1+memo[{parent, node}] }); // ans of the parent without considering this node's subtree  
+    }
+        
+    if(parent!=-1)
+    res[node] = ans;
+
+    for(auto x: tree[node])
+        dfs(x, node);
+    
 }
+ 
+int depth_fn(int root){
+    
+    if(vis[root]) return 0;
+    vis[root] = 1;
+    
+    int m = 0;
+    for(auto x: tree[root]){
+        if(!vis[x])
+        m = max(m, depth_fn(x) );
+    }
+    return depth[root] = 1+m;
+} 
  
 void solve(){
     int n;
@@ -133,6 +122,7 @@ void solve(){
     res.resize(n+1);
     tree.resize(n+1);
     vis.resize(n+1, 0);
+    depth.resize(n+1, 0);
     
     rep(i,0,n-1){
         int u, v;
@@ -142,31 +132,29 @@ void solve(){
         tree[v].pb(u);
     }
     
+    // cout<<"\n**********TREE (in AdjList)************\n";
     // rep(i,1,n+1){
     //     cout<<"for i: "<<i<<" , ";
     //     for(auto x: tree[i])cout<<x<<" ";
     //     cout<<endl;
     // }
-    // cout<<"\n***************\n";
     
-    rep(i,1,n+1){
-        vis.clear();
-        vis.resize(n+1, 0);
-        res[i] = dfs(i, -1);
-        // cout<<"\n***************\n";
-    }
+    int root = 1;
+    int temp = depth_fn(root);
     
-    // Print ANS //
-    // rep(i,1,n+1)
-    // cout<<res[i]-1<<" ";
-    cout<<"\n"<<tot;
+    res[root] = depth[root];
+    
+    vis.clear();
+    vis.resize(n+1, 0);
+    
+    dfs(root, -1);
+    
+    // Print Result //
+    rep(i,1,n+1)
+    cout<<res[i]-1<<" ";
+
 }
 signed main() {
-
-    freopen("test_input.txt" , "r" , stdin) ;
-    freopen("out.txt" , "w" , stdout) ;
-
-
 	fast_io;
 	ll t=1;
 // 	cin>>t;
